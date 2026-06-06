@@ -1,36 +1,50 @@
-# [Project name]
+# The Daily — Personalized Newspaper
 
-_Replace the heading above with the project's name, and this line with one sentence describing what this app does for users._
+A personalized digital newspaper that reshapes itself around your interests — premium broadsheet aesthetics, real live news, and a reading style tuned to how you like it.
 
 ## Run & Operate
 
-- `pnpm --filter @workspace/api-server run dev` — run the API server (port 5000)
+- `pnpm --filter @workspace/api-server run dev` — run the API server (port 8080)
+- `pnpm --filter @workspace/newsroom run dev` — run the newspaper frontend (port 23519)
 - `pnpm run typecheck` — full typecheck across all packages
 - `pnpm run build` — typecheck + build all packages
 - `pnpm --filter @workspace/api-spec run codegen` — regenerate API hooks and Zod schemas from the OpenAPI spec
-- `pnpm --filter @workspace/db run push` — push DB schema changes (dev only)
-- Required env: `DATABASE_URL` — Postgres connection string
+- Required env: `NEWS_API_KEY` — from newsapi.org (free tier)
 
 ## Stack
 
 - pnpm workspaces, Node.js 24, TypeScript 5.9
 - API: Express 5
-- DB: PostgreSQL + Drizzle ORM
-- Validation: Zod (`zod/v4`), `drizzle-zod`
+- DB: Not used (news is fetched live + in-memory cache)
+- Validation: Zod (`zod/v4`), generated from OpenAPI
 - API codegen: Orval (from OpenAPI spec)
-- Build: esbuild (CJS bundle)
+- Frontend: React + Vite + Tailwind + shadcn/ui
+- News source: NewsAPI.org
 
 ## Where things live
 
-_Populate as you build — short repo map plus pointers to the source-of-truth file for DB schema, API contracts, theme files, etc._
+- `lib/api-spec/openapi.yaml` — API contract (source of truth)
+- `artifacts/api-server/src/routes/news.ts` — news fetching, caching, style transformation logic
+- `artifacts/newsroom/src/` — React frontend (newspaper UI)
+- `artifacts/newsroom/src/hooks/use-preferences.ts` — localStorage preference management
+- `artifacts/newsroom/src/pages/` — setup, feed, settings, home pages
 
 ## Architecture decisions
 
-_Populate as you build — non-obvious choices a reader couldn't infer from the code (3-5 bullets)._
+- **No database** — user preferences stored in localStorage; news cached in-memory on the server (6h TTL per topic+style key). Keeps deployment simple and stateless.
+- **Style transformation is server-side rule-based** — no AI API required. Simple string transforms applied per style (serious/punchy/casual/genz) on titles and descriptions.
+- **One cache entry per sorted-topic-set + style** — cache key normalizes topic order so `tech,ai` and `ai,tech` hit the same cache.
+- **Parallel topic fetching** — `Promise.all` fetches all topics simultaneously to minimize latency.
+- **Pull quotes extracted from content** — server picks a compelling sentence from article content/description to surface as a blockquote callout.
 
 ## Product
 
-_Describe the high-level user-facing capabilities of this app once they exist._
+- **Setup screen** — Pick topics from chips or type custom ones. Choose reading style (Serious / Punchy / Casual / Gen Z).
+- **Newspaper feed** — Broadsheet layout: bold masthead, section dividers, hero articles with images, pull quotes, secondary article grid. Feed styled per preference.
+- **Settings** — Edit topics + style anytime from gear icon.
+- **6-hour refresh** — News auto-refreshes every 6 hours; manual refresh button available.
+- **Fully responsive** — Mobile and desktop layouts.
+- **Remembers you** — Preferences stored in localStorage, no login required.
 
 ## User preferences
 
@@ -38,8 +52,6 @@ _Populate as you build — explicit user instructions worth remembering across s
 
 ## Gotchas
 
-_Populate as you build — sharp edges, "always run X before Y" rules._
-
-## Pointers
-
-- See the `pnpm-workspace` skill for workspace structure, TypeScript setup, and package details
+- NewsAPI free tier only works for development (localhost). For production deployment, needs a paid NewsAPI plan or alternative (GNews, Currents, etc.).
+- `NEWS_API_KEY` must be set in Replit Secrets.
+- After any OpenAPI spec change, run codegen before editing routes or frontend.

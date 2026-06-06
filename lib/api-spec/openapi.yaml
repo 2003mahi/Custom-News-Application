@@ -3,13 +3,15 @@ info:
   # Do not change the title, if the title changes, the import paths will be broken
   title: Api
   version: 0.1.0
-  description: API specification
+  description: Personalized News API
 servers:
   - url: /api
     description: Base API path
 tags:
   - name: health
     description: Health operations
+  - name: news
+    description: News operations
 paths:
   /healthz:
     get:
@@ -24,6 +26,89 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/HealthStatus"
+
+  /news:
+    get:
+      operationId: getNews
+      tags: [news]
+      summary: Get personalized news feed
+      description: Fetch news articles for given topics, styled according to preference. Cached for 6 hours per topic set.
+      parameters:
+        - name: topics
+          in: query
+          required: true
+          schema:
+            type: string
+          description: Comma-separated list of topics (e.g. "tech,cricket,AI")
+        - name: style
+          in: query
+          required: true
+          schema:
+            type: string
+            enum: [serious, punchy, casual, genz]
+          description: Reading style preference
+        - name: refresh
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: ["true", "false"]
+          description: Force refresh bypassing cache
+      responses:
+        "200":
+          description: Personalized news feed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/NewsFeed"
+        "400":
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "500":
+          description: Server error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /news/status:
+    get:
+      operationId: getNewsStatus
+      tags: [news]
+      summary: Get feed cache status
+      description: Returns last refresh time and next scheduled refresh
+      parameters:
+        - name: topics
+          in: query
+          required: true
+          schema:
+            type: string
+          description: Comma-separated topics to check status for
+      responses:
+        "200":
+          description: Cache status
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FeedStatus"
+
+  /news/trending:
+    get:
+      operationId: getTrendingTopics
+      tags: [news]
+      summary: Get trending topic suggestions
+      description: Returns popular topic suggestions to help users discover content
+      responses:
+        "200":
+          description: Trending topics
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TrendingTopics"
+
 components:
   schemas:
     HealthStatus:
@@ -34,3 +119,142 @@ components:
       required:
         - status
 
+    ErrorResponse:
+      type: object
+      properties:
+        error:
+          type: string
+      required:
+        - error
+
+    Article:
+      type: object
+      required:
+        - id
+        - title
+        - description
+        - url
+        - source
+        - publishedAt
+        - topic
+        - styledTitle
+        - styledDescription
+      properties:
+        id:
+          type: string
+        title:
+          type: string
+        styledTitle:
+          type: string
+          description: Title rewritten in the user's preferred style
+        description:
+          type: string
+        styledDescription:
+          type: string
+          description: Description rewritten in the user's preferred style
+        content:
+          type: ["string", "null"]
+        url:
+          type: string
+        urlToImage:
+          type: ["string", "null"]
+        source:
+          type: string
+        author:
+          type: ["string", "null"]
+        publishedAt:
+          type: string
+        topic:
+          type: string
+        pullQuote:
+          type: ["string", "null"]
+          description: A compelling pull quote extracted from the article
+
+    ArticleSection:
+      type: object
+      required:
+        - topic
+        - articles
+        - headline
+      properties:
+        topic:
+          type: string
+        headline:
+          type: string
+          description: Section headline styled for the topic
+        articles:
+          type: array
+          items:
+            $ref: "#/components/schemas/Article"
+
+    NewsFeed:
+      type: object
+      required:
+        - sections
+        - masthead
+        - lastRefreshed
+        - nextRefresh
+        - style
+        - edition
+      properties:
+        sections:
+          type: array
+          items:
+            $ref: "#/components/schemas/ArticleSection"
+        masthead:
+          type: string
+          description: The newspaper name/masthead for this edition
+        lastRefreshed:
+          type: string
+          description: ISO timestamp of last refresh
+        nextRefresh:
+          type: string
+          description: ISO timestamp of next scheduled refresh
+        style:
+          type: string
+        edition:
+          type: string
+          description: Edition label e.g. "Morning Edition · June 6, 2026"
+        totalArticles:
+          type: integer
+
+    FeedStatus:
+      type: object
+      required:
+        - lastRefreshed
+        - nextRefresh
+        - isCached
+        - topics
+      properties:
+        lastRefreshed:
+          type: ["string", "null"]
+        nextRefresh:
+          type: ["string", "null"]
+        isCached:
+          type: boolean
+        topics:
+          type: string
+
+    TrendingTopics:
+      type: object
+      required:
+        - topics
+      properties:
+        topics:
+          type: array
+          items:
+            $ref: "#/components/schemas/TopicSuggestion"
+
+    TopicSuggestion:
+      type: object
+      required:
+        - name
+        - category
+        - emoji
+      properties:
+        name:
+          type: string
+        category:
+          type: string
+        emoji:
+          type: string

@@ -5,7 +5,8 @@
  * Personalized News API
  * OpenAPI spec version: 0.1.0
  */
+import type { TopicSuggestion } from './topicSuggestion';
 
-export interface HealthStatus {
-  status: string;
+export interface TrendingTopics {
+  topics: TopicSuggestion[];
 }
